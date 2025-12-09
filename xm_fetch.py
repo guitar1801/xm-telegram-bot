@@ -15,61 +15,62 @@ def fetch_xm_users_today():
         context = browser.new_context()
         page = context.new_page()
 
-        # ---------------------------
+        # -----------------------------
         # LOGIN
-        # ---------------------------
+        # -----------------------------
         page.goto(LOGIN_URL, wait_until="networkidle")
 
-        page.get_by_label("Affiliate ID:").fill(XM_USERNAME)
-        page.get_by_label("Password:").fill(XM_PASSWORD)
+        # Fill login
+        page.get_by_placeholder("Affiliate ID").fill(XM_USERNAME)
+        page.get_by_placeholder("Password").fill(XM_PASSWORD)
         page.get_by_role("button", name="LOGIN").click()
+
         page.wait_for_load_state("networkidle")
 
-        # ---------------------------
+        # -----------------------------
         # GO TO TRADER LIST PAGE
-        # ---------------------------
+        # -----------------------------
         page.goto(TRADER_LIST_URL, wait_until="networkidle")
 
-        # Report type = New Trader Registrations
-        page.locator("select[name='report']").select_option("new-trader-registrations")
+        # -----------------------------
+        # SELECT TODAY
+        # -----------------------------
+        # dropdown 'Report'
+        page.locator("div[id='report']").click()
+        page.get_by_role("option", name="New Trader Registrations").click()
 
-        # Time Frame = Today
-        page.locator("select[name='timeFrame']").select_option("today")
+        # dropdown 'Time frame'
+        page.locator("div[id='timeframe']").click()
+        page.get_by_role("option", name="Today").click()
 
+        # -----------------------------
         # RUN REPORT
+        # -----------------------------
         page.get_by_role("button", name="RUN REPORT").click()
+
         page.wait_for_load_state("networkidle")
 
-        # ---------------------------
-        # SCRAPE TABLE (ALL PAGES)
-        # ---------------------------
-        client_ids = set()
+        # -----------------------------
+        # READ TABLE
+        # -----------------------------
+        rows = page.locator("table tbody tr")
+        count = rows.count()
 
-        while True:
-            rows = page.locator("table tbody tr")
-            row_count = rows.count()
+        client_ids = []
 
-            for i in range(row_count):
-                cols = rows.nth(i).locator("td")
-                client_id = cols.nth(1).inner_text().strip()
-                client_ids.add(client_id)
-
-            # NEXT PAGE BUTTON
-            next_btn = page.locator("button[aria-label='Next page']")
-            disabled = next_btn.get_attribute("disabled")
-
-            if disabled:
-                break  # no more pages
-            else:
-                next_btn.click()
-                page.wait_for_load_state("networkidle")
+        for i in range(count):
+            cid = rows.nth(i).locator("td").nth(0).inner_text().strip()
+            client_ids.append(cid)
 
         browser.close()
 
-        return len(client_ids), sorted(list(client_ids))
+        client_ids = list(set(client_ids))   # remove duplicates
+
+        return len(client_ids), client_ids
 
 
+# TEST
 if __name__ == "__main__":
-    count, users = fetch_xm_users_today()
-    print("COUNT =", count)
-    print("\n".join(users))
+    c, u = fetch_xm_users_today()
+    print("Today:", c)
+    print("\n".join(u))
