@@ -11,7 +11,7 @@ def user_command(update, context):
         update.message.reply_text("ใช้คำสั่ง: /user xm")
         return
 
-    update.message.reply_text("⏳ กำลังตรวจสอบ XM...")
+    update.message.reply_text("⏳ กำลังตรวจสอบจากดาว XM...")
 
     try:
         count, users = fetch_xm_users_today()
