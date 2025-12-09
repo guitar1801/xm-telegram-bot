@@ -8,7 +8,6 @@ XM_PASSWORD = "Guitar2541@"
 LOGIN_URL = "https://mypartners.xm.com/#/login"
 TRADER_LIST_URL = "https://mypartners.xm.com/#/reports/trader-list"
 
-
 def fetch_xm_users_today():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -16,59 +15,76 @@ def fetch_xm_users_today():
         page = context.new_page()
 
         # -----------------------------
-        # 1. เปิดหน้า LOGIN
+        # OPEN LOGIN PAGE
         # -----------------------------
         page.goto(LOGIN_URL)
+
+        # ⭐ รอ SPA Render ตัว input จริงให้โผล่ก่อน
+        page.wait_for_selector("//input[@type='text' or @placeholder='Affiliate ID']", timeout=60000)
+
+        # กรอก Affiliate ID
+        page.fill("//input[@type='text' or contains(@placeholder,'Affiliate')]", XM_USERNAME)
+
+        # กรอก Password
+        page.fill("//input[@type='password']", XM_PASSWORD)
+
+        # ⭐ รอปุ่ม LOGIN สีแดง
+        page.wait_for_selector("//button[contains(., 'LOGIN') or contains(., 'เข้าสู่ระบบ')]", timeout=60000)
+
+        # คลิกปุ่ม LOGIN
+        page.locator("//button[contains(., 'LOGIN') or contains(., 'เข้าสู่ระบบ')]").click()
+
+        # รอให้ล็อคอินเสร็จ
         page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(5000)  # ให้ XM โหลด script ให้เสร็จ
 
         # -----------------------------
-        # 2. หา INPUT แบบ XPath
-        # -----------------------------
-        aff_input = page.locator("(//input[@type='text'])[1]")
-        page.wait_for_selector("(//input[@type='text'])[1]", timeout=60000)
-        aff_input.fill(XM_USERNAME)
-
-        pass_input = page.locator("(//input[@type='password'])[1]")
-        page.wait_for_selector("(//input[@type='password'])[1]", timeout=60000)
-        pass_input.fill(XM_PASSWORD)
-
-        # -----------------------------
-        # 3. หา LOGIN button แบบครอบคลุมที่สุด
-        # -----------------------------
-        login_btn = page.locator(
-            "//button[contains(., 'LOGIN') "
-            "or contains(., 'เข้าสู่ระบบ') "
-            "or @type='submit' "
-            "or contains(@class, 'btn') "
-            "or contains(@class, 'login')]"
-        )
-
-        page.wait_for_timeout(3000)
-        login_btn.first.click(timeout=60000)
-
-        # เผื่อเข้า iframe (XM อาจโหลดช้าและย้าย DOM)
-        if not page.url.__contains__("/dashboard"):
-            try:
-                iframe = page.frame_locator("iframe")
-                iframe.locator("button").first.click()
-            except:
-                pass
-
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(5000)
-
-        # -----------------------------
-        # 4. เปิด Trader List
+        # ไปหน้า TRADER LIST
         # -----------------------------
         page.goto(TRADER_LIST_URL, wait_until="networkidle")
-        page.wait_for_timeout(4000)
 
         # -----------------------------
-        # 5. เลือกเมนู Report / Time Frame
+        # เลือก Report = New Trader Registrations
         # -----------------------------
+        page.wait_for_selector("//div[@id='report']")
+
         page.locator("//div[@id='report']").click()
-        page.locator("//div[contains(text(),'New Trader Registrations')]").click()
+        page.locator("//li[contains(., 'New Trader Registrations')]").click()
 
+        # -----------------------------
+        # Time Frame = Today
+        # -----------------------------
         page.locator("//div[@id='timeframe']").click()
-        page.locator("//div[contains(]()
+        page.locator("//li[contains(., 'Today')]").click()
+
+        # -----------------------------
+        # RUN REPORT
+        # -----------------------------
+        page.locator("//button[contains(., 'RUN REPORT')]").click()
+
+        page.wait_for_load_state("networkidle")
+
+        # -----------------------------
+        # อ่านตารางข้อมูล
+        # -----------------------------
+        rows = page.locator("table tbody tr")
+        count = rows.count()
+
+        client_ids = []
+
+        for i in range(count):
+            cid = rows.nth(i).locator("td").nth(0).inner_text().strip()
+            client_ids.append(cid)
+
+        browser.close()
+
+        # ลบซ้ำ
+        client_ids = list(set(client_ids))
+
+        return len(client_ids), client_ids
+
+
+# TEST
+if __name__ == "__main__":
+    c, u = fetch_xm_users_today()
+    print("Today:", c)
+    print("\n".join(u))
