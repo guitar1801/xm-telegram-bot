@@ -15,7 +15,7 @@ def user_command(update, context):
 
     try:
         count, users = fetch_xm_users_today()
-        text = f"📊 วันนี้มีลูกค้าสมัครใหม่ทั้งหมด *{count}* คน\n\n"
+        text = f"📊 วันนี้มีลูกค้าสมัครโบรก XM ทั้งหมด *{count}* คน\n\n"
         text += "\n".join(users)
 
         update.message.reply_text(text, parse_mode="Markdown")
