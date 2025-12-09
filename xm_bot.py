@@ -1,8 +1,8 @@
+import os
 from telegram.ext import Updater, CommandHandler
 from xm_fetch import fetch_xm_users_today
-import os
 
-TELEGRAM_TOKEN = os.getenv("8520532994:AAEIhxwvb13ip0UsnJ8YmHsMNLm0qdyvyDE")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 def user_command(update, context):
     chat_id = update.effective_chat.id
