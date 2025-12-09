@@ -10,8 +10,16 @@ TRADER_LIST_URL = "https://mypartners.xm.com/#/reports/trader-list"
 
 def fetch_xm_users_today():
     with sync_playwright() as p:
-        # ใช้ headless=False เพื่อให้หน้าโหลดครบทุก component
-        browser = p.chromium.launch(headless=False)
+
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-gpu",
+                "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled"
+            ]
+        )
 
         # Stealth mode — ทำให้เหมือน Chrome จริงๆ
         context = browser.new_context(
