@@ -2,9 +2,6 @@
 from playwright.sync_api import sync_playwright
 from datetime import datetime
 
-# -----------------------------
-# CONFIG
-# -----------------------------
 XM_USERNAME = "CH350846966"
 XM_PASSWORD = "Guitar2541@"
 
@@ -19,78 +16,59 @@ def fetch_xm_users_today():
         page = context.new_page()
 
         # -----------------------------
-        # 1. เปิดหน้า Login
+        # 1. เปิดหน้า LOGIN
         # -----------------------------
-        page.goto(LOGIN_URL, wait_until="networkidle")
+        page.goto(LOGIN_URL)
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(5000)  # ให้ XM โหลด script ให้เสร็จ
 
         # -----------------------------
-        # 2. หา input แบบใช้ XPath (กันทุกภาษา)
+        # 2. หา INPUT แบบ XPath
         # -----------------------------
-        # Affiliate ID field
         aff_input = page.locator("(//input[@type='text'])[1]")
         page.wait_for_selector("(//input[@type='text'])[1]", timeout=60000)
         aff_input.fill(XM_USERNAME)
 
-        # Password field
         pass_input = page.locator("(//input[@type='password'])[1]")
         page.wait_for_selector("(//input[@type='password'])[1]", timeout=60000)
         pass_input.fill(XM_PASSWORD)
 
-        # Login button
-        login_btn = page.locator("//button[contains(., 'LOGIN') or contains(., 'เข้าสู่ระบบ')]")
-        login_btn.click()
+        # -----------------------------
+        # 3. หา LOGIN button แบบครอบคลุมที่สุด
+        # -----------------------------
+        login_btn = page.locator(
+            "//button[contains(., 'LOGIN') "
+            "or contains(., 'เข้าสู่ระบบ') "
+            "or @type='submit' "
+            "or contains(@class, 'btn') "
+            "or contains(@class, 'login')]"
+        )
+
+        page.wait_for_timeout(3000)
+        login_btn.first.click(timeout=60000)
+
+        # เผื่อเข้า iframe (XM อาจโหลดช้าและย้าย DOM)
+        if not page.url.__contains__("/dashboard"):
+            try:
+                iframe = page.frame_locator("iframe")
+                iframe.locator("button").first.click()
+            except:
+                pass
 
         page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(5000)
 
         # -----------------------------
-        # 3. เปิดหน้า Trader List
+        # 4. เปิด Trader List
         # -----------------------------
         page.goto(TRADER_LIST_URL, wait_until="networkidle")
+        page.wait_for_timeout(4000)
 
         # -----------------------------
-        # 4. เลือก Report = New Trader Registrations
+        # 5. เลือกเมนู Report / Time Frame
         # -----------------------------
-        page.wait_for_timeout(2000)
         page.locator("//div[@id='report']").click()
         page.locator("//div[contains(text(),'New Trader Registrations')]").click()
 
-        # -----------------------------
-        # 5. เลือก Time frame = Today
-        # -----------------------------
         page.locator("//div[@id='timeframe']").click()
-        page.locator("//div[contains(text(),'Today')]").click()
-
-        # -----------------------------
-        # 6. RUN REPORT
-        # -----------------------------
-        run_button = page.locator("//button[contains(., 'RUN REPORT')]")
-        run_button.click()
-
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(3000)
-
-        # -----------------------------
-        # 7. อ่านตารางผลลัพธ์
-        # -----------------------------
-        rows = page.locator("table tbody tr")
-        count = rows.count()
-
-        client_ids = []
-
-        for i in range(count):
-            cid = rows.nth(i).locator("td").nth(0).inner_text().strip()
-            client_ids.append(cid)
-
-        browser.close()
-
-        # ลบ client id ซ้ำ
-        client_ids = list(set(client_ids))
-
-        return len(client_ids), client_ids
-
-
-# TEST RUN
-if __name__ == "__main__":
-    c, u = fetch_xm_users_today()
-    print("TODAY:", c)
-    print("\n".join(u))
+        page.locator("//div[contains(]()
