@@ -1,1 +1,1 @@
-worker: python xm_bot.py
+worker: bash start.sh
