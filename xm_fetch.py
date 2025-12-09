@@ -25,25 +25,21 @@ def fetch_xm_users_today():
 
         page = context.new_page()
 
-       # -----------------------------
-# LOGIN PAGE
+# -----------------------------
+# LOGIN (XPath version)
 # -----------------------------
 page.goto(LOGIN_URL, wait_until="networkidle")
 
-# 🚀 รอหน้าโหลดจนกว่าปุ่ม LOGIN จะโผล่ (เชื่อถือได้ที่สุด)
-page.wait_for_selector("//button[contains(., 'LOGIN')]", timeout=60000)
+# รอให้ช่อง Affiliate ID โผล่
+page.wait_for_selector("//input[@type='text']", timeout=60000)
 
-# 🚀 ใช้ XPath เพราะ placeholder อาจไม่โหลดใน Render
-affiliate_xpath = "//input[@type='text' and contains(@class,'input')]"
-password_xpath = "//input[@type='password']"
+# กรอก Affiliate ID
+page.locator("//input[@type='text']").first.fill(XM_USERNAME)
 
-# Fill Affiliate ID
-page.locator(affiliate_xpath).first.fill(XM_USERNAME)
+# กรอก Password
+page.locator("//input[@type='password']").first.fill(XM_PASSWORD)
 
-# Fill password
-page.locator(password_xpath).first.fill(XM_PASSWORD)
-
-# Click LOGIN
+# กดปุ่ม LOGIN
 page.locator("//button[contains(., 'LOGIN')]").click()
 
 page.wait_for_load_state("networkidle")
