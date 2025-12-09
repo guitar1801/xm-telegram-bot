@@ -1,5 +1,6 @@
 # xm_fetch.py
 from playwright.sync_api import sync_playwright
+from datetime import datetime
 
 XM_USERNAME = "CH350846966"
 XM_PASSWORD = "Guitar2541@"
@@ -8,13 +9,32 @@ LOGIN_URL = "https://mypartners.xm.com/#/login"
 TRADER_LIST_URL = "https://mypartners.xm.com/#/reports/trader-list"
 
 
-def wait_until_login_loaded(page):
-    """รอให้หน้า Login จริงโหลดเสร็จ (ไม่ใช่ splash screen)"""
-    page.wait_for_selector("input[type='text'], input[placeholder]", timeout=90000)
-    page.wait_for_selector("input[type='password']", timeout=90000)
+def click_shadow_button(page, text):
+    """คลิกปุ่มที่อยู่ใน Shadow DOM"""
+    page.wait_for_timeout(1500)
+    page.evaluate(f"""
+        const btns = document.querySelectorAll('button');
+        for (const b of btns) {{
+            if (b.innerText.trim().includes("{text}")) {{
+                b.click();
+                break;
+            }}
+        }}
+    """)
 
-    # รอให้ปุ่ม LOGIN ตัวจริงโผล่
-    page.wait_for_selector("//button[contains(., 'LOGIN') or contains(., 'เข้าสู่ระบบ')]", timeout=90000)
+
+def fill_shadow_input(page, placeholder, value):
+    """กรอก input ใน Shadow DOM"""
+    page.evaluate(f"""
+        const inputs = document.querySelectorAll('input');
+        for (const i of inputs) {{
+            if (i.placeholder && i.placeholder.includes("{placeholder}")) {{
+                i.value = "{value}";
+                i.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                break;
+            }}
+        }}
+    """)
 
 
 def fetch_xm_users_today():
@@ -22,42 +42,39 @@ def fetch_xm_users_today():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
-        # 1) เปิดหน้า Login
-        page.goto(LOGIN_URL, wait_until="networkidle")
+        page.goto(LOGIN_URL, wait_until="domcontentloaded")
 
-        # ⭐ 2) รอ splash screen หาย + รอ element จริง
-        wait_until_login_loaded(page)
+        # ⭐ กรอก Affiliate ID (Shadow DOM)
+        fill_shadow_input(page, "Affiliate", XM_USERNAME)
 
-        # 3) กรอกข้อมูล
-        page.fill("//input[@type='text' or contains(@placeholder,'Affiliate')]", XM_USERNAME)
-        page.fill("//input[@type='password']", XM_PASSWORD)
+        # ⭐ กรอก Password (Shadow DOM)
+        fill_shadow_input(page, "Password", XM_PASSWORD)
 
-        # 4) คลิกปุ่ม LOGIN
-        page.locator("//button[contains(., 'LOGIN') or contains(., 'เข้าสู่ระบบ')]").click()
+        page.wait_for_timeout(500)
 
-        # รอโหลดหน้า Dashboard เสร็จ
-        page.wait_for_load_state("networkidle")
+        # ⭐ คลิก LOGIN (Shadow DOM)
+        click_shadow_button(page, "LOGIN")
 
-        # 5) ไปหน้า Trader List
+        # รอโหลด Dashboard
+        page.wait_for_load_state("networkidle", timeout=90000)
+
+        # ไปหน้า Trader List
         page.goto(TRADER_LIST_URL, wait_until="networkidle")
 
-        # รอ dropdowns
-        page.wait_for_selector("#report", timeout=60000)
-        page.wait_for_selector("#timeframe", timeout=60000)
+        # กด dropdown Report (Shadow DOM)
+        click_shadow_button(page, "Report")
+        click_shadow_button(page, "New Trader Registrations")
 
-        # เลือก New Trader Registrations
-        page.locator("#report").click()
-        page.locator("//li[contains(., 'New Trader Registrations')]").click()
+        # กด dropdown Time frame
+        click_shadow_button(page, "Time frame")
+        click_shadow_button(page, "Today")
 
-        # Timeframe = Today
-        page.locator("#timeframe").click()
-        page.locator("//li[contains(., 'Today')]").click()
+        # RUN REPORT
+        click_shadow_button(page, "RUN REPORT")
 
-        # Run report
-        page.locator("//button[contains(., 'RUN REPORT')]").click()
         page.wait_for_load_state("networkidle")
 
-        # อ่านตาราง
+        # อ่านตารางปกติ (อันนี้ไม่ใช่ shadow dom)
         rows = page.locator("table tbody tr")
         count = rows.count()
 
@@ -67,10 +84,11 @@ def fetch_xm_users_today():
             client_ids.append(cid)
 
         browser.close()
+
         return len(set(client_ids)), list(set(client_ids))
 
 
-# TEST RUN
+# TEST
 if __name__ == "__main__":
     c, u = fetch_xm_users_today()
     print("Total:", c)
