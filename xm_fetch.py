@@ -2,6 +2,9 @@
 from playwright.sync_api import sync_playwright
 from datetime import datetime
 
+# -----------------------------
+# CONFIG
+# -----------------------------
 XM_USERNAME = "CH350846966"
 XM_PASSWORD = "Guitar2541@"
 
@@ -11,68 +14,83 @@ TRADER_LIST_URL = "https://mypartners.xm.com/#/reports/trader-list"
 
 def fetch_xm_users_today():
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--disable-web-security", "--disable-blink-features=AutomationControlled"]
-        )
-
-        context = browser.new_context(
-            locale="en-US",
-            timezone_id="Asia/Bangkok",
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-            viewport={"width": 1280, "height": 800}
-        )
-
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context()
         page = context.new_page()
 
-# -----------------------------
-# LOGIN (XPath version)
-# -----------------------------
-page.goto(LOGIN_URL, wait_until="networkidle")
-
-# รอให้ช่อง Affiliate ID โผล่
-page.wait_for_selector("//input[@type='text']", timeout=60000)
-
-# กรอก Affiliate ID
-page.locator("//input[@type='text']").first.fill(XM_USERNAME)
-
-# กรอก Password
-page.locator("//input[@type='password']").first.fill(XM_PASSWORD)
-
-# กดปุ่ม LOGIN
-page.locator("//button[contains(., 'LOGIN')]").click()
-
-page.wait_for_load_state("networkidle")
+        # -----------------------------
+        # 1. เปิดหน้า Login
+        # -----------------------------
+        page.goto(LOGIN_URL, wait_until="networkidle")
 
         # -----------------------------
-        # TRADER LIST PAGE
+        # 2. หา input แบบใช้ XPath (กันทุกภาษา)
         # -----------------------------
-        page.goto(TRADER_LIST_URL, wait_until="networkidle")
+        # Affiliate ID field
+        aff_input = page.locator("(//input[@type='text'])[1]")
+        page.wait_for_selector("(//input[@type='text'])[1]", timeout=60000)
+        aff_input.fill(XM_USERNAME)
 
-        # รอ dropdown ปรากฏ
-        page.wait_for_selector("div[id='report']", timeout=60000)
-        page.locator("div[id='report']").click()
-        page.get_by_role("option", name="New Trader Registrations").click()
+        # Password field
+        pass_input = page.locator("(//input[@type='password'])[1]")
+        page.wait_for_selector("(//input[@type='password'])[1]", timeout=60000)
+        pass_input.fill(XM_PASSWORD)
 
-        page.wait_for_selector("div[id='timeframe']", timeout=60000)
-        page.locator("div[id='timeframe']").click()
-        page.get_by_role("option", name="Today").click()
+        # Login button
+        login_btn = page.locator("//button[contains(., 'LOGIN') or contains(., 'เข้าสู่ระบบ')]")
+        login_btn.click()
 
-        # RUN REPORT
-        page.get_by_role("button", name="RUN REPORT").click()
         page.wait_for_load_state("networkidle")
 
         # -----------------------------
-        # READ TABLE
+        # 3. เปิดหน้า Trader List
+        # -----------------------------
+        page.goto(TRADER_LIST_URL, wait_until="networkidle")
+
+        # -----------------------------
+        # 4. เลือก Report = New Trader Registrations
+        # -----------------------------
+        page.wait_for_timeout(2000)
+        page.locator("//div[@id='report']").click()
+        page.locator("//div[contains(text(),'New Trader Registrations')]").click()
+
+        # -----------------------------
+        # 5. เลือก Time frame = Today
+        # -----------------------------
+        page.locator("//div[@id='timeframe']").click()
+        page.locator("//div[contains(text(),'Today')]").click()
+
+        # -----------------------------
+        # 6. RUN REPORT
+        # -----------------------------
+        run_button = page.locator("//button[contains(., 'RUN REPORT')]")
+        run_button.click()
+
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(3000)
+
+        # -----------------------------
+        # 7. อ่านตารางผลลัพธ์
         # -----------------------------
         rows = page.locator("table tbody tr")
         count = rows.count()
 
         client_ids = []
+
         for i in range(count):
             cid = rows.nth(i).locator("td").nth(0).inner_text().strip()
             client_ids.append(cid)
 
         browser.close()
 
-        return len(set(client_ids)), list(set(client_ids))
+        # ลบ client id ซ้ำ
+        client_ids = list(set(client_ids))
+
+        return len(client_ids), client_ids
+
+
+# TEST RUN
+if __name__ == "__main__":
+    c, u = fetch_xm_users_today()
+    print("TODAY:", c)
+    print("\n".join(u))
