@@ -25,20 +25,28 @@ def fetch_xm_users_today():
 
         page = context.new_page()
 
-        # -----------------------------
-        # LOGIN PAGE
-        # -----------------------------
-        page.goto(LOGIN_URL, wait_until="networkidle")
+       # -----------------------------
+# LOGIN PAGE
+# -----------------------------
+page.goto(LOGIN_URL, wait_until="networkidle")
 
-        # รอช่อง affiliate id ปรากฏจริง
-        page.wait_for_selector("input[placeholder='Affiliate ID']", timeout=60000)
-        page.fill("input[placeholder='Affiliate ID']", XM_USERNAME)
+# 🚀 รอหน้าโหลดจนกว่าปุ่ม LOGIN จะโผล่ (เชื่อถือได้ที่สุด)
+page.wait_for_selector("//button[contains(., 'LOGIN')]", timeout=60000)
 
-        page.wait_for_selector("input[placeholder='Password']", timeout=60000)
-        page.fill("input[placeholder='Password']", XM_PASSWORD)
+# 🚀 ใช้ XPath เพราะ placeholder อาจไม่โหลดใน Render
+affiliate_xpath = "//input[@type='text' and contains(@class,'input')]"
+password_xpath = "//input[@type='password']"
 
-        page.get_by_role("button", name="LOGIN").click()
-        page.wait_for_load_state("networkidle")
+# Fill Affiliate ID
+page.locator(affiliate_xpath).first.fill(XM_USERNAME)
+
+# Fill password
+page.locator(password_xpath).first.fill(XM_PASSWORD)
+
+# Click LOGIN
+page.locator("//button[contains(., 'LOGIN')]").click()
+
+page.wait_for_load_state("networkidle")
 
         # -----------------------------
         # TRADER LIST PAGE
