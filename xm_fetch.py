@@ -20,7 +20,6 @@ def fetch_xm_users_today():
         # -----------------------------
         page.goto(LOGIN_URL, wait_until="networkidle")
 
-        # Fill login
         page.get_by_placeholder("Affiliate ID").fill(XM_USERNAME)
         page.get_by_placeholder("Password").fill(XM_PASSWORD)
         page.get_by_role("button", name="LOGIN").click()
@@ -36,10 +35,12 @@ def fetch_xm_users_today():
         # SELECT TODAY
         # -----------------------------
         # dropdown 'Report'
+        page.locator("div[id='report']").wait_for(state="visible")
         page.locator("div[id='report']").click()
         page.get_by_role("option", name="New Trader Registrations").click()
 
         # dropdown 'Time frame'
+        page.locator("div[id='timeframe']").wait_for(state="visible")
         page.locator("div[id='timeframe']").click()
         page.get_by_role("option", name="Today").click()
 
@@ -64,13 +65,6 @@ def fetch_xm_users_today():
 
         browser.close()
 
-        client_ids = list(set(client_ids))   # remove duplicates
+        client_ids = list(set(client_ids))
 
         return len(client_ids), client_ids
-
-
-# TEST
-if __name__ == "__main__":
-    c, u = fetch_xm_users_today()
-    print("Today:", c)
-    print("\n".join(u))
