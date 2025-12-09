@@ -1,7 +1,7 @@
 from telegram.ext import Updater, CommandHandler
 from xm_fetch import fetch_xm_users_today
 
-TELEGRAM_TOKEN = "8520532994:AAGzYFsxiCinqZ2CTwQz53H5XMRh5cokiTk"
+TELEGRAM_TOKEN = "8520532994:AAEIhxwvb13ip0UsnJ8YmHsMNLm0qdyvyDE"
 
 def user_command(update, context):
     chat_id = update.effective_chat.id
