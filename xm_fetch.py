@@ -1,6 +1,5 @@
 # xm_fetch.py
 from playwright.sync_api import sync_playwright
-import time
 
 XM_USERNAME = "CH350846966"
 XM_PASSWORD = "Guitar2541@"
@@ -11,21 +10,10 @@ TRADER_LIST_URL = "https://mypartners.xm.com/#/reports/trader-list"
 
 def fetch_xm_users_today():
     with sync_playwright() as p:
+        # ใช้ headless=False เพื่อให้หน้าโหลดครบทุก component
+        browser = p.chromium.launch(headless=False)
 
-        # ใช้ headless=True เท่านั้นบน Render
-        browser = p.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-gpu",
-                "--disable-dev-shm-usage",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-web-security",
-                "--disable-features=IsolateOrigins",
-                "--disable-site-isolation-trials",
-            ]
-        )
-
+        # Stealth mode — ทำให้เหมือน Chrome จริงๆ
         context = browser.new_context(
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -37,47 +25,60 @@ def fetch_xm_users_today():
 
         page = context.new_page()
 
-        # ================================
-        # 1) LOGIN PAGE
-        # ================================
-        page.goto(LOGIN_URL, wait_until="networkidle")
-
-        # รอ input ให้โหลดครบ
-        page.wait_for_selector("input[type='text']", timeout=60000)
-
-        page.locator("input[type='text']").fill(XM_USERNAME)
-        page.locator("input[type='password']").fill(XM_PASSWORD)
-
-        # คลิกปุ่ม Login
-        page.locator("button.btn-danger").click()
+        # -----------------------------
+        # 1) เปิดหน้า LOGIN
+        # -----------------------------
+        page.goto(LOGIN_URL)
         page.wait_for_load_state("networkidle")
 
-        # ================================
-        # 2) TRADER LIST PAGE
-        # ================================
-        page.goto(TRADER_LIST_URL, wait_until="networkidle")
+        # รอให้เว็บโหลด component ของ Aurelia ให้เสร็จ
+        page.wait_for_selector("input[type='text']", timeout=60000)
 
-        # รอ dropdown โหลด
-        page.wait_for_selector("div[id='report']", timeout=60000)
+        # -----------------------------
+        # 2) กรอกข้อมูล Login
+        # -----------------------------
+        # ช่อง Affiliate ID
+        page.locator("input[type='text']").fill(XM_USERNAME)
 
-        # ----------------------- Select Report
+        # ช่อง Password
+        page.locator("input[type='password']").fill(XM_PASSWORD)
+
+        # -----------------------------
+        # 3) คลิกปุ่ม LOGIN
+        # -----------------------------
+        # จาก DOM จริง ปุ่มเป็น class="btn btn-danger"
+        page.locator("button.btn-danger").click()
+
+        # รอหลัง LOGIN
+        page.wait_for_load_state("networkidle")
+
+        # -----------------------------
+        # 4) ไปหน้า Trader List
+        # -----------------------------
+        page.goto(TRADER_LIST_URL)
+        page.wait_for_load_state("networkidle")
+
+        # -----------------------------
+        # 5) เลือก Report = New Trader Registrations
+        # -----------------------------
         page.locator("div[id='report']").click()
         page.get_by_role("option", name="New Trader Registrations").click()
 
-        # ----------------------- Select Timeframe
+        # -----------------------------
+        # 6) เลือก Today
+        # -----------------------------
         page.locator("div[id='timeframe']").click()
         page.get_by_role("option", name="Today").click()
 
-        # ----------------------- Run Report
+        # -----------------------------
+        # 7) RUN REPORT
+        # -----------------------------
         page.get_by_role("button", name="RUN REPORT").click()
-
-        # รอข้อมูลโหลด
         page.wait_for_load_state("networkidle")
-        time.sleep(1)  # กันช้า
 
-        # ================================
-        # 3) TABLE PARSE
-        # ================================
+        # -----------------------------
+        # 8) อ่านตาราง
+        # -----------------------------
         rows = page.locator("table tbody tr")
         count = rows.count()
 
@@ -90,10 +91,12 @@ def fetch_xm_users_today():
 
         # ลบซ้ำ
         client_ids = list(set(client_ids))
+
         return len(client_ids), client_ids
 
 
-# Run manual test
+
+# TEST
 if __name__ == "__main__":
     c, u = fetch_xm_users_today()
     print("Today:", c)
